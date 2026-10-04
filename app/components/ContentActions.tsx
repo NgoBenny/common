@@ -47,7 +47,7 @@ export function ContentActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          align="end"
+          align={kind === "comment" ? "start" : "end"}
           collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
           className="min-w-48 [&_[role=menuitem]]:min-h-11"
         >
