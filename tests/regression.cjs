@@ -370,6 +370,7 @@ async function main() {
     "./db": { __esModule: true, default: prisma },
   });
   const actions = load("app/actions.ts", {
+    "./lib/moderation": load("app/lib/moderation.ts", { "server-only": {} }),
     "./lib/rate-limit": rateLimit,
     "./lib/validation": validation,
     "./lib/db": { __esModule: true, default: prisma },

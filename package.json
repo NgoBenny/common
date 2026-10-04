@@ -14,7 +14,7 @@
     "postinstall": "node scripts/braces-patch.cjs && prisma generate",
     "audit:security": "node scripts/audit-dependencies.cjs",
     "test:dependency-security": "node tests/braces-security.cjs && node tests/audit-policy.cjs",
-    "test": "node tests/regression.cjs && node tests/database-safety.cjs && node tests/backup-retention.cjs",
+    "test": "node tests/regression.cjs && node tests/moderation.cjs && node tests/database-safety.cjs && node tests/backup-retention.cjs",
     "test:features": "node tests/features-integration.cjs",
     "test:runtime-role": "node tests/runtime-role.cjs",
     "test:browser": "node tests/browser-smoke.cjs",

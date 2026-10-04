@@ -2,6 +2,7 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import prisma from "@/app/lib/db";
+import { moderatedCommunityWhere } from "@/app/lib/moderation";
 import { resolveReport } from "@/app/actions";
 import { ActionForm } from "@/app/components/ActionForm";
 import { SubmitButton } from "@/app/components/SubmitButtons";
@@ -20,7 +21,7 @@ export default async function Moderation({
   const query = await searchParams;
   if (
     !(await prisma.subreddit.findFirst({
-      where: { name: id, userId: user.id },
+      where: moderatedCommunityWhere(user.id, id),
       select: { id: true },
     }))
   )

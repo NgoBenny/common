@@ -6,6 +6,7 @@ import { SubmitButton } from "@/app/components/SubmitButtons";
 import { setMembership } from "@/app/actions";
 import { CommunityRulesForm } from "@/app/components/CommunityRulesForm";
 import prisma from "@/app/lib/db";
+import { canModerateCommunity } from "@/app/lib/moderation";
 import type { FeedQuery } from "@/app/lib/feed";
 import { Card } from "@/components/ui/card";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
@@ -42,7 +43,7 @@ export default async function Community({
     },
   });
   if (!community) notFound();
-  const moderator = user?.id === community.userId;
+  const moderator = canModerateCommunity(user?.id, community.userId);
   const joined = community.memberships.length > 0;
   return (
     <main className="page-grid">

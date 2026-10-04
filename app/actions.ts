@@ -3,6 +3,10 @@
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { redirect } from "next/navigation";
 import prisma from "./lib/db";
+import {
+  canModerateCommunity,
+  moderatedCommunityWhere,
+} from "./lib/moderation";
 import { Prisma } from "@prisma/client";
 import { JSONContent } from "@tiptap/react";
 import { revalidatePath } from "next/cache";
@@ -248,7 +252,7 @@ export async function resolveReport(form: FormData) {
     const owner =
       report?.Post?.Subreddit?.userId ??
       report?.Comment?.Post?.Subreddit?.userId;
-    if (!report || report.resolvedAt || owner !== user.id)
+    if (!report || report.resolvedAt || !canModerateCommunity(user.id, owner))
       throw new Error("Only the community moderator can review this report");
     if (remove === "remove") {
       if (report.postId)
@@ -288,7 +292,7 @@ export async function updateCommunityRules(form: FormData) {
         "Use up to 20 unique flair labels, at most 40 characters each",
       );
     const result = await prisma.subreddit.updateMany({
-      where: { name: formText(form, "subName", 21), userId: user.id },
+      where: moderatedCommunityWhere(user.id, formText(form, "subName", 21)),
       data: { rules: optionalText(form, "rules", 5000), flairs },
     });
     if (!result.count)
@@ -405,10 +409,7 @@ export async function updateSubDescription(prevState: any, formData: FormData) {
     }
 
     const result = await prisma.subreddit.updateMany({
-      where: {
-        name: subName,
-        userId: user.id,
-      },
+      where: moderatedCommunityWhere(user.id, subName),
       data: {
         description: description.trim(),
       },
@@ -416,7 +417,7 @@ export async function updateSubDescription(prevState: any, formData: FormData) {
     if (!result.count)
       return {
         status: "error",
-        message: "Only the community creator can edit its description",
+        message: "Only a community moderator can edit its description",
       };
     revalidatePath(`/r/${subName}`);
 
