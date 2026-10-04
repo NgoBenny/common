@@ -17,9 +17,11 @@ export default async function Notifications({
   if (!user) redirect("/api/auth/login");
   const query = await searchParams;
   const [count, notices] = await prisma.$transaction([
-    prisma.notification.count({ where: { userId: user.id } }),
+    prisma.notification.count({
+      where: { userId: user.id, Post: { Subreddit: { removedAt: null } } },
+    }),
     prisma.notification.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, Post: { Subreddit: { removedAt: null } } },
       take: 20,
       skip: (pageNumber(query.page) - 1) * 20,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],

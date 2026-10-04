@@ -1,3 +1,4 @@
+import { RestrictionNotice } from "@/app/components/RestrictionNotice";
 import { CreatePostCard } from "@/app/components/CreatePostCard";
 import { FeedFilters, PostFeed } from "@/app/components/PostFeed";
 import { SubDescriptionForm } from "@/app/components/SubDescritpionForm";
@@ -25,8 +26,8 @@ export default async function Community({
   const { id } = await params;
   const query = await searchParams;
   const user = await getKindeServerSession().getUser();
-  const community = await prisma.subreddit.findUnique({
-    where: { name: id },
+  const community = await prisma.subreddit.findFirst({
+    where: { name: id, removedAt: null },
     select: {
       id: true,
       name: true,
@@ -121,13 +122,14 @@ export default async function Community({
                 href={`/r/${id}/moderation`}
                 className="inline-flex min-h-11 items-center text-primary underline"
               >
-                Review reports
+                Moderate community
               </Link>
             </div>
           )}
         </details>
       </Card>
       <div className="min-w-0 space-y-5">
+        <RestrictionNotice subName={community.name} />
         <CreatePostCard subName={community.name} />
         <FeedFilters key={JSON.stringify(query)} query={query} />
         <PostFeed query={query} subName={community.name} userId={user?.id} />

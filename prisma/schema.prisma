@@ -32,6 +32,7 @@ model User {
   savedPosts    SavedPost[]
   reports       Report[]
   notifications Notification[]
+  restrictions  UserRestriction[]
 }
 
 model Subreddit {
@@ -43,10 +44,42 @@ model Subreddit {
   User        User?    @relation(fields: [userId], references: [id])
   userId      String?
 
-  posts       Post[]
-  rules       String       @default("")
-  flairs      String[]     @default([])
-  memberships Membership[]
+  posts        Post[]
+  rules        String            @default("")
+  flairs       String[]          @default([])
+  memberships  Membership[]
+  removedAt    DateTime?
+  restrictions UserRestriction[]
+}
+
+model UserRestriction {
+  id          String     @id @default(uuid())
+  userId      String
+  User        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subredditId String?
+  Subreddit   Subreddit? @relation(fields: [subredditId], references: [id], onDelete: Cascade)
+  reason      String
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  expiresAt   DateTime?
+  liftedAt    DateTime?
+  liftedBy    String?
+
+  @@index([userId, liftedAt, expiresAt])
+  @@index([subredditId, createdAt])
+}
+
+model ModerationEvent {
+  id           String   @id @default(uuid())
+  actorId      String
+  targetUserId String?
+  subredditId  String?
+  action       String
+  reason       String
+  createdAt    DateTime @default(now())
+
+  @@index([subredditId, createdAt])
+  @@index([createdAt])
 }
 
 model Post {

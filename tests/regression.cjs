@@ -191,7 +191,8 @@ async function main() {
         throw successRedirect;
       },
       unstable_rethrow,
-      serializeEditorContent: load("app/lib/editor-content.ts").serializeEditorContent,
+      serializeEditorContent: load("app/lib/editor-content.ts")
+        .serializeEditorContent,
       toast: () => notices++,
       json: null,
       post: undefined,
@@ -210,7 +211,8 @@ async function main() {
         throw new Error("Database unavailable");
       },
       unstable_rethrow,
-      serializeEditorContent: load("app/lib/editor-content.ts").serializeEditorContent,
+      serializeEditorContent: load("app/lib/editor-content.ts")
+        .serializeEditorContent,
       toast: () => notices++,
       json: null,
       post: undefined,
@@ -322,7 +324,8 @@ async function main() {
       },
     },
     post: {
-      findFirst: async () => ({ id: "post", userId: "owner" }),
+      findUnique: async () => ({ subName: "test" }),
+      findFirst: async () => ({ id: "post", userId: "owner", subName: "test" }),
       count: countRecent("post"),
       create: async () => {
         writes++;
@@ -369,9 +372,18 @@ async function main() {
     },
   };
   const rateLimit = load("app/lib/rate-limit.ts", {
+    "./restrictions": {
+      assertParticipation: async () => {},
+      lockParticipant: async () => {},
+    },
     "./db": { __esModule: true, default: prisma },
   });
   const actions = load("app/actions.ts", {
+    "./lib/restrictions": {
+      assertParticipation: async () => {},
+      lockParticipant: async () => {},
+      lockCommunity: async () => {},
+    },
     "./lib/moderation": load("app/lib/moderation.ts", { "server-only": {} }),
     "./lib/rate-limit": rateLimit,
     "./lib/validation": validation,
@@ -492,12 +504,16 @@ async function main() {
   let uploadGuard;
   let uploadComplete;
   load("app/api/uploadthing/core.ts", {
+    "@/app/lib/restrictions": { assertParticipation: async () => {} },
     "@kinde-oss/kinde-auth-nextjs/server": {
       getKindeServerSession: () => ({ getUser: async () => user }),
     },
     "uploadthing/server": { UploadThingError: class extends Error {} },
     "uploadthing/next": {
       createUploadthing: () => () => ({
+        input() {
+          return this;
+        },
         middleware(fn) {
           uploadGuard = fn;
           return this;
@@ -509,10 +525,13 @@ async function main() {
       }),
     },
   });
-  await uploadGuard({ files: [{ type: "image/png" }] });
+  await uploadGuard({
+    files: [{ type: "image/png" }],
+    input: { subName: "test" },
+  });
   for (const type of ["image/svg+xml", "text/html", "application/javascript"]) {
     await assert.rejects(
-      () => uploadGuard({ files: [{ type }] }),
+      () => uploadGuard({ files: [{ type }], input: { subName: "test" } }),
       /JPEG, PNG, WebP or GIF/,
     );
   }

@@ -72,22 +72,24 @@ export function CommentThread({
                 ? "Removed by moderator"
                 : comment.text}
           </p>
-          {!comment.deletedAt && !comment.removedAt && (
-            <ContentActions
-              id={comment.id}
-              kind="comment"
-              owner={!!userId && userId === comment.userId}
-              text={comment.text}
-            />
-          )}
-          {canReply && depth < 9 && (
-            <details>
-              <summary className="inline-flex min-h-11 items-center text-sm font-medium text-primary">
-                Reply
-              </summary>
-              <CommentForm postId={postId} parentId={comment.id} />
-            </details>
-          )}
+          <div className="flex items-center gap-2">
+            {!comment.deletedAt && !comment.removedAt && (
+              <ContentActions
+                id={comment.id}
+                kind="comment"
+                owner={!!userId && userId === comment.userId}
+                text={comment.text}
+              />
+            )}
+            {canReply && depth < 9 && (
+              <details>
+                <summary className="inline-flex min-h-11 items-center text-sm font-medium text-primary">
+                  Reply
+                </summary>
+                <CommentForm postId={postId} parentId={comment.id} />
+              </details>
+            )}
+          </div>
           <div className={depth < 3 ? "ml-1 sm:ml-3" : ""}>
             {thread(comment.id, depth + 1)}
           </div>

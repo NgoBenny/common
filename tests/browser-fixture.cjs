@@ -10,6 +10,8 @@ const db = new PrismaClient({
   datasources: { db: { url: process.env.FEATURE_TEST_URL } },
 });
 const actions = load("app/actions.ts", {
+  "./lib/moderation": load("app/lib/moderation.ts", { "server-only": {} }),
+  "./lib/restrictions": require("./load-restrictions.cjs")(db),
   "@kinde-oss/kinde-auth-nextjs/server": {
     getKindeServerSession: () => ({
       getUser: async () => ({ id: "browser-member" }),
@@ -17,7 +19,7 @@ const actions = load("app/actions.ts", {
   },
   "./lib/db": db,
   "./lib/validation": load("app/lib/validation.ts"),
-  "./lib/rate-limit": load("app/lib/rate-limit.ts", { "./db": db }),
+  "./lib/rate-limit": load("app/lib/rate-limit.ts", { "./db": db, "./restrictions": require("./load-restrictions.cjs")(db) }),
   "next/cache": { revalidatePath() {} },
   "next/navigation": {
     redirect: () => {

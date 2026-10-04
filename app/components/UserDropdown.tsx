@@ -13,9 +13,14 @@ import { LoginLink, LogoutLink } from "@kinde-oss/kinde-auth-nextjs/components";
 interface iAppProps {
   userImage: string | null;
   userName?: string | null;
+  siteModerator?: boolean;
 }
 
-export function UserDropdown({ userImage, userName }: iAppProps) {
+export function UserDropdown({
+  userImage,
+  userName,
+  siteModerator,
+}: iAppProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger aria-label="Account menu">
@@ -25,10 +30,7 @@ export function UserDropdown({ userImage, userName }: iAppProps) {
             width={32}
             height={32}
             unoptimized
-            src={
-              userImage ??
-              "/avatar.svg"
-            }
+            src={userImage ?? "/avatar.svg"}
             alt="Your user avatar"
             className="rounded-full h-8 w-8 hidden sm:block"
             referrerPolicy="no-referrer"
@@ -37,6 +39,11 @@ export function UserDropdown({ userImage, userName }: iAppProps) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-[200px]">
+        {siteModerator && (
+          <DropdownMenuItem asChild>
+            <Link href="/moderation">Site moderation</Link>
+          </DropdownMenuItem>
+        )}
         {userName && (
           <DropdownMenuItem asChild>
             <Link href={`/u/${userName}`}>My profile</Link>

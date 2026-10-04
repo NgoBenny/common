@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { RestrictionNotice } from "./components/RestrictionNotice";
 import { Navbar } from "./components/Navbar";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -41,6 +42,7 @@ export default function RootLayout({
         >
           <Navbar />
           <div id="main-content" tabIndex={-1} className="app-content">
+            <RestrictionNotice />
             {children}
             <footer className="mx-auto max-w-[1100px] border-t px-4 py-4">
               <LegalLinks />

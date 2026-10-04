@@ -17,14 +17,23 @@ async function tableCounts(db) {
         db.notification.count(),
       ])),
     );
+  const moderation =
+    await db.$queryRaw`SELECT to_regclass('public."UserRestriction"') IS NOT NULL AS present`;
+  if (moderation[0].present)
+    counts.push(
+      ...(await Promise.all([
+        db.userRestriction.count(),
+        db.moderationEvent.count(),
+      ])),
+    );
   return counts;
 }
 
 async function requireRls(db) {
   const tables =
-    await db.$queryRaw`SELECT rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('User', 'Subreddit', 'Post', 'Vote', 'Comment', 'Membership', 'SavedPost', 'Report', 'Notification')`;
+    await db.$queryRaw`SELECT rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('User', 'Subreddit', 'Post', 'Vote', 'Comment', 'Membership', 'SavedPost', 'Report', 'Notification', 'UserRestriction', 'ModerationEvent')`;
   if (
-    ![5, 9].includes(tables.length) ||
+    ![5, 9, 11].includes(tables.length) ||
     tables.some((table) => !table.rowsecurity)
   ) {
     throw new Error("All application tables must have RLS enabled.");

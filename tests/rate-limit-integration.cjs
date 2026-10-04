@@ -12,6 +12,7 @@ async function main() {
   const db = new PrismaClient({ datasources: { db: { url: url.href } } });
   try {
     const { createLimited, RateLimitError } = load("app/lib/rate-limit.ts", {
+      "./restrictions": require("./load-restrictions.cjs")(db),
       "./db": { __esModule: true, default: db },
     });
     const userId = `rate-test-${randomUUID()}`;

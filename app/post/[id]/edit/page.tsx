@@ -1,3 +1,5 @@
+import { participationProblem } from "@/app/lib/restrictions";
+import { RestrictionNotice } from "@/app/components/RestrictionNotice";
 import PostComposer from "@/app/components/PostComposer";
 import prisma from "@/app/lib/db";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
@@ -12,7 +14,13 @@ export default async function EditPost({
   if (!user) redirect("/api/auth/login");
   const { id } = await params;
   const post = await prisma.post.findFirst({
-    where: { id, userId: user.id, deletedAt: null, removedAt: null },
+    where: {
+      id,
+      userId: user.id,
+      deletedAt: null,
+      removedAt: null,
+      Subreddit: { removedAt: null },
+    },
     select: {
       id: true,
       title: true,
@@ -24,6 +32,13 @@ export default async function EditPost({
     },
   });
   if (!post?.Subreddit || !post.subName) notFound();
+  if (await participationProblem(user.id, post.subName))
+    return (
+      <main className="page-single">
+        <h1 className="text-2xl font-semibold">Editing is restricted</h1>
+        <RestrictionNotice subName={post.subName} />
+      </main>
+    );
   return (
     <PostComposer
       subName={post.subName}
