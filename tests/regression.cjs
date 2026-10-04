@@ -191,6 +191,7 @@ async function main() {
         throw successRedirect;
       },
       unstable_rethrow,
+      serializeEditorContent: load("app/lib/editor-content.ts").serializeEditorContent,
       toast: () => notices++,
       json: null,
       post: undefined,
@@ -209,6 +210,7 @@ async function main() {
         throw new Error("Database unavailable");
       },
       unstable_rethrow,
+      serializeEditorContent: load("app/lib/editor-content.ts").serializeEditorContent,
       toast: () => notices++,
       json: null,
       post: undefined,

@@ -13,6 +13,7 @@ import { createPost, editPost } from "@/app/actions";
 import { unstable_rethrow } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import type { JSONContent } from "@tiptap/react";
+import { serializeEditorContent } from "@/app/lib/editor-content";
 
 export default function PostComposer({
   subName,
@@ -46,9 +47,10 @@ export default function PostComposer({
   async function submitPost(formData: FormData) {
     setError("");
     try {
+      const jsonContent = serializeEditorContent(json);
       const result = await (post
-        ? editPost({ jsonContent: json }, formData)
-        : createPost({ jsonContent: json }, formData));
+        ? editPost({ jsonContent }, formData)
+        : createPost({ jsonContent }, formData));
       if (result?.error) {
         setError(result.error);
         toast({
