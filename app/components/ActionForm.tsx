@@ -9,6 +9,7 @@ export function ActionForm({
   confirm,
   success,
   className,
+  onSuccess,
 }: {
   action: (
     form: FormData,
@@ -17,6 +18,7 @@ export function ActionForm({
   confirm?: string;
   success?: string;
   className?: string;
+  onSuccess?: () => void;
 }) {
   const { toast } = useToast();
   const ref = useRef<HTMLFormElement>(null);
@@ -54,6 +56,7 @@ export function ActionForm({
             details.open = false;
           if (result?.message || success)
             toast({ title: result?.message || success });
+          onSuccess?.();
         } catch (error) {
           unstable_rethrow(error);
           setError(

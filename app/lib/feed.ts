@@ -43,7 +43,7 @@ export async function getFeed(
       : query.time === "week"
         ? new Date(Date.now() - 604800000)
         : new Date(0);
-  const filters = Prisma.sql`p."deletedAt" IS NULL AND p."removedAt" IS NULL AND p."createdAt" >= ${since}
+  const filters = Prisma.sql`EXISTS (SELECT 1 FROM "Subreddit" community WHERE community.name = p."subName" AND community."removedAt" IS NULL) AND p."deletedAt" IS NULL AND p."removedAt" IS NULL AND p."createdAt" >= ${since}
     AND (p.title ILIKE ${like} OR p."bodyText" ILIKE ${like})
     ${scope.subName ? Prisma.sql`AND p."subName" = ${scope.subName}` : Prisma.empty}
     ${scope.authorId ? Prisma.sql`AND p."userId" = ${scope.authorId}` : Prisma.empty}
@@ -64,6 +64,7 @@ export async function getFeed(
       id: { in: ids.map((p) => p.id) },
       deletedAt: null,
       removedAt: null,
+      Subreddit: { removedAt: null },
     },
     select: {
       ...postSelect,

@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <>
       <h1>Privacy policy</h1>
       <p>
-        Updated October 2, 2026. Common is a community discussion project
+        Updated October 3, 2026. Common is a community discussion project
         operated by Benny Ngo in Santa Clara, California. Contact{" "}
         <a href="mailto:bkvngo@gmail.com">bkvngo@gmail.com</a> about privacy.
       </p>
@@ -26,6 +26,14 @@ export default function PrivacyPage() {
         public. Votes, saved posts, memberships and notifications support your
         account experience. Reports are shown to the relevant community
         moderator. Do not post information you want to keep private.
+      </p>
+      <p>
+        We also keep participation restrictions and moderation history, including
+        reasons, expiry dates and the account that applied or lifted them, to
+        manage abuse and review moderation decisions. Restriction reasons are
+        visible to the affected user and authorized moderators. Community
+        removal hides its content without deleting its records. Contact us to
+        contest a restriction or discuss deletion of these records.
       </p>
       <h2>Service providers</h2>
       <p>

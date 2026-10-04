@@ -14,13 +14,15 @@ GRANT USAGE ON SCHEMA public TO common_app;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."User", public."Subreddit",
   public."Post", public."Vote", public."Comment", public."Membership",
-  public."SavedPost", public."Report", public."Notification" TO common_app;
+  public."SavedPost", public."Report", public."Notification", public."UserRestriction" TO common_app;
+GRANT SELECT, INSERT ON public."ModerationEvent" TO common_app;
+REVOKE UPDATE, DELETE ON public."ModerationEvent" FROM common_app;
 -- Explicit API-role revocation: Prisma uses a server connection, not the Data API.
 REVOKE ALL ON TABLE public."User", public."Subreddit", public."Post", public."Vote",
   public."Comment", public."Membership", public."SavedPost", public."Report",
-  public."Notification", public."_prisma_migrations" FROM anon, authenticated;
+  public."Notification", public."UserRestriction", public."ModerationEvent", public."_prisma_migrations" FROM anon, authenticated;
 DO $$ DECLARE t text; BEGIN
-  FOREACH t IN ARRAY ARRAY['User','Subreddit','Post','Vote','Comment','Membership','SavedPost','Report','Notification'] LOOP
+  FOREACH t IN ARRAY ARRAY['User','Subreddit','Post','Vote','Comment','Membership','SavedPost','Report','Notification','UserRestriction','ModerationEvent'] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
     IF NOT EXISTS (SELECT FROM pg_policies WHERE schemaname='public' AND tablename=t AND policyname='common_server_runtime') THEN
       EXECUTE format('CREATE POLICY common_server_runtime ON public.%I FOR ALL TO common_app USING (true) WITH CHECK (true)', t);

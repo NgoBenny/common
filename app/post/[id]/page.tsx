@@ -1,3 +1,4 @@
+import { RestrictionNotice } from "@/app/components/RestrictionNotice";
 import { getVoteSummary } from "@/app/lib/votes";
 import { CommentForm } from "@/app/components/CommentForm";
 import { CommentThread } from "@/app/components/CommentThread";
@@ -24,8 +25,8 @@ export default async function PostPage({
   const { id } = await params;
   const user = await getKindeServerSession().getUser();
   // ponytail: one post's complete thread; paginate root threads if discussions become large.
-  const post = await prisma.post.findUnique({
-    where: { id },
+  const post = await prisma.post.findFirst({
+    where: { id, Subreddit: { removedAt: null } },
     select: {
       id: true,
       title: true,
@@ -132,7 +133,10 @@ export default async function PostPage({
                       post.Comment.filter((c) => !c.deletedAt && !c.removedAt)
                         .length
                     }{" "}
-                    Comments
+                    {post.Comment.filter((c) => !c.deletedAt && !c.removedAt)
+                      .length === 1
+                      ? "Comment"
+                      : "Comments"}
                   </span>
                   <CopyLink id={id} />
                   <ActionForm action={setSavedPost}>
@@ -154,12 +158,15 @@ export default async function PostPage({
                       }
                     />
                   </ActionForm>
+                  <div className="ml-auto">
+                    <ContentActions
+                      id={id}
+                      kind="post"
+                      owner={!!user && user.id === post.userId}
+                    />
+                  </div>
                 </div>
-                <ContentActions
-                  id={id}
-                  kind="post"
-                  owner={!!user && user.id === post.userId}
-                />
+                <RestrictionNotice subName={post.subName ?? undefined} />
                 <CommentForm postId={id} />
               </>
             )}

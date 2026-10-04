@@ -24,12 +24,22 @@ export default async function Profile({
       createdAt: true,
       _count: {
         select: {
-          posts: { where: { deletedAt: null, removedAt: null } },
+          posts: {
+            where: {
+              deletedAt: null,
+              removedAt: null,
+              Subreddit: { removedAt: null },
+            },
+          },
           Comment: {
             where: {
               deletedAt: null,
               removedAt: null,
-              Post: { deletedAt: null, removedAt: null },
+              Post: {
+                deletedAt: null,
+                removedAt: null,
+                Subreddit: { removedAt: null },
+              },
             },
           },
         },
@@ -44,7 +54,11 @@ export default async function Profile({
             userId: user.id,
             deletedAt: null,
             removedAt: null,
-            Post: { deletedAt: null, removedAt: null },
+            Post: {
+              deletedAt: null,
+              removedAt: null,
+              Subreddit: { removedAt: null },
+            },
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 10,

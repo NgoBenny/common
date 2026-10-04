@@ -12,6 +12,7 @@ import { UserDropdown } from "./UserDropdown";
 import { Brand } from "./Brand";
 import { Navigation } from "./Navigation";
 import prisma from "../lib/db";
+import { isSiteModerator } from "../lib/moderation";
 
 export async function Navbar() {
   const user = await getKindeServerSession().getUser();
@@ -21,9 +22,15 @@ export async function Navbar() {
           where: { id: user.id },
           select: { userName: true },
         }),
-        prisma.notification.count({ where: { userId: user.id, readAt: null } }),
+        prisma.notification.count({
+          where: {
+            userId: user.id,
+            readAt: null,
+            Post: { Subreddit: { removedAt: null } },
+          },
+        }),
         prisma.membership.findMany({
-          where: { userId: user.id },
+          where: { userId: user.id, Subreddit: { removedAt: null } },
           take: 8,
           orderBy: { createdAt: "desc" },
           select: { Subreddit: { select: { name: true } } },
@@ -97,6 +104,7 @@ export async function Navbar() {
                   <UserDropdown
                     userImage={user.picture}
                     userName={profile?.userName}
+                    siteModerator={isSiteModerator(user.id)}
                   />
                 </>
               ) : (

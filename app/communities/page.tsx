@@ -14,7 +14,10 @@ export default async function Communities({
   const query = await searchParams;
   const q = typeof query.q === "string" ? query.q.trim().slice(0, 100) : "";
   const composing = query.compose === "1";
-  const where = { name: { contains: q, mode: "insensitive" as const } };
+  const where = {
+    removedAt: null,
+    name: { contains: q, mode: "insensitive" as const },
+  };
   const [count, communities] = await prisma.$transaction([
     prisma.subreddit.count({ where }),
     prisma.subreddit.findMany({

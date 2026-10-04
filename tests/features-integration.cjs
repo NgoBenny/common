@@ -7,9 +7,14 @@ if (url !== "postgresql://browser_test@127.0.0.1:55440/postgres")
 const db = new PrismaClient({ datasources: { db: { url } } });
 let actor = "browser-author";
 const validation = load("app/lib/validation.ts");
-const limits = load("app/lib/rate-limit.ts", { "./db": db });
+const restrictions = require("./load-restrictions.cjs")(db, validation);
+const limits = load("app/lib/rate-limit.ts", {
+  "./db": db,
+  "./restrictions": restrictions,
+});
 const moderation = load("app/lib/moderation.ts", { "server-only": {} });
 const actions = load("app/actions.ts", {
+  "./lib/restrictions": restrictions,
   "./lib/moderation": moderation,
   "@kinde-oss/kinde-auth-nextjs/server": {
     getKindeServerSession: () => ({
@@ -372,14 +377,15 @@ async function main() {
     ).error,
     /too quickly/,
   );
-  await assert.rejects(
-    () =>
-      actions.createComment(
+  assert.match(
+    (
+      await actions.createComment(
         form({
           postId: recentPost.id,
           comment: "Cannot reply to deleted post",
         }),
-      ),
+      )
+    ).error,
     /unavailable/,
   );
   await assert.rejects(

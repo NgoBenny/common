@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import prisma from "@/app/lib/db";
 import { moderatedCommunityWhere } from "@/app/lib/moderation";
+import { ModerationControls } from "@/app/components/ModerationControls";
+import { isSiteModerator } from "@/app/lib/moderation";
 import { resolveReport } from "@/app/actions";
 import { ActionForm } from "@/app/components/ActionForm";
 import { SubmitButton } from "@/app/components/SubmitButtons";
@@ -19,12 +21,11 @@ export default async function Moderation({
   if (!user) redirect("/api/auth/login");
   const { id } = await params;
   const query = await searchParams;
-  if (
-    !(await prisma.subreddit.findFirst({
-      where: moderatedCommunityWhere(user.id, id),
-      select: { id: true },
-    }))
-  )
+  const community = await prisma.subreddit.findFirst({
+    where: moderatedCommunityWhere(user.id, id),
+    select: { id: true, removedAt: true },
+  });
+  if (!community || (community.removedAt && !isSiteModerator(user.id)))
     notFound();
   const where = {
     resolvedAt: null,
@@ -48,7 +49,18 @@ export default async function Moderation({
   ]);
   return (
     <main className="max-w-[800px] mx-auto px-4 py-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Reports in r/{id}</h1>
+      <h1 className="text-2xl font-semibold">Moderation in r/{id}</h1>
+      {community.removedAt && (
+        <p>
+          This community is removed from public browsing. Restore it in Site
+          moderation.
+        </p>
+      )}
+      {isSiteModerator(user.id) && (
+        <Link href="/moderation" className="text-primary underline">
+          Site moderation
+        </Link>
+      )}
       <Link href={`/r/${id}`} className="text-primary underline">
         Back to community
       </Link>
@@ -92,6 +104,11 @@ export default async function Moderation({
         </article>
       ))}
       <Pagination totalPages={Math.ceil(count / 20)} />
+      <ModerationControls
+        scope={id}
+        subredditId={community.id}
+        page={pageNumber(query.page)}
+      />
     </main>
   );
 }

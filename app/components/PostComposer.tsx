@@ -163,6 +163,7 @@ export default function PostComposer({
                 <UploadDropzone
                   className="ut-button:bg-primary ut-label:text-primary ut-button:ut-uploading:bg-primary/50 ut-button:ut-uploading:after:bg-primary"
                   endpoint="imageUploader"
+                  input={{ subName }}
                   skipPolling
                   onUploadBegin={() => setUploading(true)}
                   onClientUploadComplete={(res) => {

@@ -4,6 +4,12 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { redirect } from "next/navigation";
 import prisma from "./lib/db";
 import {
+  assertParticipation,
+  participate,
+  lockParticipant,
+  lockCommunity,
+} from "./lib/restrictions";
+import {
   canModerateCommunity,
   moderatedCommunityWhere,
 } from "./lib/moderation";
@@ -24,7 +30,7 @@ import {
   validationResult,
 } from "./lib/validation";
 
-async function requireUser() {
+async function requireUser(participation = true) {
   const user = await getKindeServerSession().getUser();
   if (!user) {
     console.warn(
@@ -35,6 +41,7 @@ async function requireUser() {
     );
     redirect("/api/auth/login");
   }
+  if (participation) await assertParticipation(user.id);
   return user;
 }
 
@@ -49,9 +56,13 @@ async function checkedFlair(subName: string, form: FormData) {
   const flair = optionalText(form, "flair", 40);
   const community = await prisma.subreddit.findUnique({
     where: { name: subName },
-    select: { flairs: true },
+    select: { flairs: true, removedAt: true },
   });
-  if (!community || (flair && !community.flairs.includes(flair)))
+  if (
+    !community ||
+    community.removedAt ||
+    (flair && !community.flairs.includes(flair))
+  )
     throw new ValidationError("Invalid community or flair");
   return flair || null;
 }
@@ -70,16 +81,19 @@ export async function editPost(
     if (!post?.subName)
       throw new Error("Only the author can edit an available post");
     const body = postBody(jsonContent);
-    const result = await prisma.post.updateMany({
-      where: { id, userId: user.id, deletedAt: null, removedAt: null },
-      data: {
-        title: formText(form, "title", 300),
-        ...body,
-        textContent: jsonContent == null ? Prisma.DbNull : body.textContent,
-        flair: await checkedFlair(post.subName, form),
-        editedAt: new Date(),
-      },
-    });
+    const flair = await checkedFlair(post.subName, form);
+    const result = await participate(user.id, post.subName, (tx) =>
+      tx.post.updateMany({
+        where: { id, userId: user.id, deletedAt: null, removedAt: null },
+        data: {
+          title: formText(form, "title", 300),
+          ...body,
+          textContent: jsonContent == null ? Prisma.DbNull : body.textContent,
+          flair,
+          editedAt: new Date(),
+        },
+      }),
+    );
     if (!result.count) throw new Error("Post unavailable");
     revalidatePath("/", "layout");
     redirect(`/post/${id}`);
@@ -89,7 +103,7 @@ export async function editPost(
 }
 
 export async function deleteContent(form: FormData) {
-  const user = await requireUser();
+  const user = await requireUser(false);
   const id = formText(form, "id", 100);
   const kind = formText(form, "kind", 10);
   if (kind === "post") {
@@ -119,15 +133,23 @@ export async function deleteContent(form: FormData) {
 export async function editComment(form: FormData) {
   try {
     const user = await requireUser();
-    const result = await prisma.comment.updateMany({
-      where: {
-        id: formText(form, "id", 100),
-        userId: user.id,
-        deletedAt: null,
-        removedAt: null,
-      },
-      data: { text: formText(form, "comment", 5000), editedAt: new Date() },
+    const comment = await prisma.comment.findUnique({
+      where: { id: formText(form, "id", 100) },
+      select: { Post: { select: { subName: true } } },
     });
+    if (!comment?.Post?.subName)
+      throw new ValidationError("Comment unavailable");
+    const result = await participate(user.id, comment.Post.subName, (tx) =>
+      tx.comment.updateMany({
+        where: {
+          id: formText(form, "id", 100),
+          userId: user.id,
+          deletedAt: null,
+          removedAt: null,
+        },
+        data: { text: formText(form, "comment", 5000), editedAt: new Date() },
+      }),
+    );
     if (!result.count) throw new Error("Only the author can edit this comment");
     revalidatePath("/", "layout");
   } catch (error) {
@@ -136,15 +158,22 @@ export async function editComment(form: FormData) {
 }
 
 export async function setMembership(form: FormData) {
-  const user = await requireUser();
+  const user = await requireUser(false);
   const subredditId = formText(form, "subredditId", 100);
-  if (form.get("join") === "true")
-    await prisma.membership.upsert({
-      where: { userId_subredditId: { userId: user.id, subredditId } },
-      create: { userId: user.id, subredditId },
-      update: {},
+  if (form.get("join") === "true") {
+    const community = await prisma.subreddit.findUnique({
+      where: { id: subredditId },
+      select: { name: true },
     });
-  else if (form.get("join") === "false")
+    if (!community) throw new ValidationError("Community unavailable");
+    await participate(user.id, community.name, (tx) =>
+      tx.membership.upsert({
+        where: { userId_subredditId: { userId: user.id, subredditId } },
+        create: { userId: user.id, subredditId },
+        update: {},
+      }),
+    );
+  } else if (form.get("join") === "false")
     await prisma.membership.deleteMany({
       where: { userId: user.id, subredditId },
     });
@@ -158,7 +187,12 @@ export async function setSavedPost(form: FormData) {
   if (form.get("save") === "true") {
     if (
       !(await prisma.post.findFirst({
-        where: { id: postId, deletedAt: null, removedAt: null },
+        where: {
+          id: postId,
+          deletedAt: null,
+          removedAt: null,
+          Subreddit: { removedAt: null },
+        },
         select: { id: true },
       }))
     )
@@ -187,7 +221,12 @@ export async function reportContent(form: FormData) {
     const available =
       kind === "post"
         ? await prisma.post.findFirst({
-            where: { id, deletedAt: null, removedAt: null },
+            where: {
+              id,
+              deletedAt: null,
+              removedAt: null,
+              Subreddit: { removedAt: null },
+            },
             select: { id: true },
           })
         : await prisma.comment.findFirst({
@@ -195,11 +234,18 @@ export async function reportContent(form: FormData) {
               id,
               deletedAt: null,
               removedAt: null,
+              Post: {
+                deletedAt: null,
+                removedAt: null,
+                Subreddit: { removedAt: null },
+              },
             },
             select: { id: true },
           });
     if (!available) throw new Error("Content unavailable");
     const result = await prisma.$transaction(async (tx) => {
+      await lockParticipant(tx, user.id);
+      await assertParticipation(user.id, undefined, tx);
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`reddit:report:${user.id}`}, 0))`;
       const where = { userId: user.id, postId, commentId };
       const previous = await tx.report.findFirst({
@@ -279,6 +325,7 @@ export async function resolveReport(form: FormData) {
 export async function updateCommunityRules(form: FormData) {
   try {
     const user = await requireUser();
+    await assertParticipation(user.id, formText(form, "subName", 21));
     const flairs = optionalText(form, "flairs", 800)
       .split(/\r?\n/)
       .map((value) => value.trim())
@@ -292,7 +339,10 @@ export async function updateCommunityRules(form: FormData) {
         "Use up to 20 unique flair labels, at most 40 characters each",
       );
     const result = await prisma.subreddit.updateMany({
-      where: moderatedCommunityWhere(user.id, formText(form, "subName", 21)),
+      where: {
+        ...moderatedCommunityWhere(user.id, formText(form, "subName", 21)),
+        removedAt: null,
+      },
       data: { rules: optionalText(form, "rules", 5000), flairs },
     });
     if (!result.count)
@@ -306,7 +356,7 @@ export async function updateCommunityRules(form: FormData) {
 }
 
 export async function markNotificationsRead(form: FormData) {
-  const user = await requireUser();
+  const user = await requireUser(false);
   await prisma.notification.updateMany({
     where: { userId: user.id, readAt: null },
     data: { readAt: new Date() },
@@ -315,7 +365,7 @@ export async function markNotificationsRead(form: FormData) {
 }
 
 export async function updateUsername(prevState: any, formData: FormData) {
-  const user = await requireUser();
+  const user = await requireUser(false);
 
   try {
     const username =
@@ -400,6 +450,7 @@ export async function updateSubDescription(prevState: any, formData: FormData) {
 
   try {
     const subName = formText(formData, "subName", 21);
+    await assertParticipation(user.id, subName);
     const description = formData.get("description");
     if (typeof description !== "string" || description.trim().length > 120) {
       return {
@@ -409,7 +460,7 @@ export async function updateSubDescription(prevState: any, formData: FormData) {
     }
 
     const result = await prisma.subreddit.updateMany({
-      where: moderatedCommunityWhere(user.id, subName),
+      where: { ...moderatedCommunityWhere(user.id, subName), removedAt: null },
       data: {
         description: description.trim(),
       },
@@ -448,8 +499,10 @@ export async function createPost(
     const body = postBody(jsonContent);
     const flair = await checkedFlair(subName, formData);
 
-    const data = await createLimited(user.id, "post", (tx) =>
-      tx.post.create({
+    const data = await createLimited(user.id, "post", async (tx) => {
+      await lockCommunity(tx, subName);
+      await assertParticipation(user.id, subName, tx);
+      return tx.post.create({
         data: {
           title: title,
           imageString: imageUrl || undefined,
@@ -458,8 +511,8 @@ export async function createPost(
           ...body,
           flair,
         },
-      }),
-    ).catch(rateLimitResult);
+      });
+    }).catch(rateLimitResult);
 
     if ("error" in data) return data;
 
@@ -483,10 +536,23 @@ export async function handleVote(formData: FormData) {
     try {
       await prisma.$transaction(
         async (tx) => {
+          await lockParticipant(tx, user.id);
+          const target = await tx.post.findUnique({
+            where: { id: postId },
+            select: { subName: true },
+          });
+          if (!target?.subName) throw new ValidationError("Post unavailable");
+          await lockCommunity(tx, target.subName);
+          await assertParticipation(user.id, target.subName, tx);
           const where = { postId, userId: user.id };
           if (
             !(await tx.post.findFirst({
-              where: { id: postId, deletedAt: null, removedAt: null },
+              where: {
+                id: postId,
+                deletedAt: null,
+                removedAt: null,
+                Subreddit: { removedAt: null },
+              },
             }))
           )
             throw new Error("Post unavailable");
@@ -499,7 +565,7 @@ export async function handleVote(formData: FormData) {
             });
           }
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
       );
       break;
     } catch (error) {
@@ -524,10 +590,17 @@ export async function createComment(formData: FormData) {
     const parentId = optionalText(formData, "parentId", 100) || null;
     const result = await createLimited(user.id, "comment", async (tx) => {
       const post = await tx.post.findFirst({
-        where: { id: postId, deletedAt: null, removedAt: null },
-        select: { userId: true },
+        where: {
+          id: postId,
+          deletedAt: null,
+          removedAt: null,
+          Subreddit: { removedAt: null },
+        },
+        select: { userId: true, subName: true },
       });
-      if (!post) throw new Error("Post unavailable");
+      if (!post?.subName) throw new ValidationError("Post unavailable");
+      await lockCommunity(tx, post.subName);
+      await assertParticipation(user.id, post.subName, tx);
       const parent = parentId
         ? await tx.comment.findFirst({
             where: { id: parentId, postId },

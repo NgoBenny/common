@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import prisma from "./db";
+import { assertParticipation, lockParticipant } from "./restrictions";
 
 export class RateLimitError extends Error {
   constructor() {
@@ -21,6 +22,8 @@ export async function createLimited<T>(
   const windowMs = kind === "subreddit" ? 3600000 : 60000;
   return prisma.$transaction(
     async (tx) => {
+      await lockParticipant(tx, userId);
+      await assertParticipation(userId, undefined, tx);
       // Transaction locks serialize this user's writes across Vercel instances.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`reddit:${kind}:${userId}`}, 0))`;
       // Soft-deleted records stay in the count, so deletion cannot bypass the limit.

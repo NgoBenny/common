@@ -52,6 +52,12 @@ async function main() {
       assert.equal(rights.post_dml, true);
       // Actual RLS-filtered access must work, not just the grant metadata.
       await tx.post.count();
+      await tx.userRestriction.count();
+      await tx.moderationEvent.count();
+      const [audit] = await tx.$queryRaw`SELECT has_table_privilege(current_user, 'public."ModerationEvent"', 'INSERT') AS insert_allowed, has_table_privilege(current_user, 'public."ModerationEvent"', 'UPDATE') AS update_allowed, has_table_privilege(current_user, 'public."ModerationEvent"', 'DELETE') AS delete_allowed`;
+      assert.equal(audit.insert_allowed, true);
+      assert.equal(audit.update_allowed, false);
+      assert.equal(audit.delete_allowed, false);
     });
     await assert.rejects(
       db.$transaction(async (tx) => {
