@@ -8,7 +8,9 @@ const db = new PrismaClient({ datasources: { db: { url } } });
 let actor = "browser-author";
 const validation = load("app/lib/validation.ts");
 const limits = load("app/lib/rate-limit.ts", { "./db": db });
+const moderation = load("app/lib/moderation.ts", { "server-only": {} });
 const actions = load("app/actions.ts", {
+  "./lib/moderation": moderation,
   "@kinde-oss/kinde-auth-nextjs/server": {
     getKindeServerSession: () => ({
       getUser: async () => (actor ? { id: actor } : null),
@@ -219,6 +221,39 @@ async function main() {
       .error,
     /Invalid comment/,
   );
+  // The site moderator can manage a community owned by a different account.
+  actor = "kp_3554467a11f2440cbb959123e0f4b1e8";
+  await actions.updateCommunityRules(
+    form({
+      subName: "browser-test",
+      rules: "Site moderation",
+      flairs: "Question",
+    }),
+  );
+  assert.equal(
+    (await db.subreddit.findUnique({ where: { name: "browser-test" } })).rules,
+    "Site moderation",
+  );
+  assert.equal(
+    (
+      await actions.updateSubDescription(
+        {},
+        form({
+          subName: "browser-test",
+          description: "Site-reviewed community",
+        }),
+      )
+    ).status,
+    "green",
+  );
+  await assert.rejects(
+    () =>
+      actions.editPost(
+        { jsonContent: body("Moderator cannot impersonate author") },
+        form({ postId: post.id, title: "Changed" }),
+      ),
+    /author/,
+  );
   await actions.resolveReport(
     form({ reportId: report.id, decision: "dismiss" }),
   );
@@ -242,7 +277,7 @@ async function main() {
   const openReport = await db.report.findFirst({
     where: { postId: post.id, resolvedAt: null },
   });
-  actor = "browser-moderator";
+  actor = "kp_3554467a11f2440cbb959123e0f4b1e8";
   await actions.resolveReport(
     form({ reportId: openReport.id, decision: "remove" }),
   );
