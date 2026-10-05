@@ -50,6 +50,7 @@ export default async function PostPage({
           text: true,
           userId: true,
           parentId: true,
+          createdAt: true,
           editedAt: true,
           deletedAt: true,
           removedAt: true,
