@@ -10,6 +10,7 @@ type ThreadComment = {
   deletedAt: Date | null;
   removedAt: Date | null;
   editedAt: Date | null;
+  createdAt: Date;
   User: { userName: string | null } | null;
 };
 
@@ -35,7 +36,7 @@ export function CommentThread({
         key={comment.id}
         id={`comment-${comment.id}`}
         open
-        className="thread my-4 min-w-0 border-l pl-3"
+        className={`thread my-5 min-w-0 ${depth > 0 && depth <= 3 ? "ml-2 border-l border-border/70 pl-3 sm:ml-3 sm:pl-4" : ""}`}
       >
         <summary>
           <ChevronDown
@@ -56,6 +57,17 @@ export function CommentThread({
               </Link>
             )}
           </span>
+          <time
+            className="text-xs text-muted-foreground"
+            dateTime={comment.createdAt.toISOString()}
+            title={comment.createdAt.toISOString()}
+          >
+            {comment.createdAt.toLocaleDateString("en-US", {
+              timeZone: "UTC",
+              month: "short",
+              day: "numeric",
+            })}
+          </time>
           {comment.editedAt && !comment.deletedAt && !comment.removedAt && (
             <span className="text-xs text-muted-foreground">edited</span>
           )}
@@ -64,36 +76,43 @@ export function CommentThread({
           </span>
           <span className="sr-only">Toggle comment thread</span>
         </summary>
-        <div className="min-w-0 break-words pl-2">
-          <p className="my-2 whitespace-pre-wrap text-sm leading-relaxed">
+        <div className="min-w-0 break-words pl-6">
+          <p className="mb-1 whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">
             {comment.deletedAt
               ? "[deleted]"
               : comment.removedAt
                 ? "Removed by moderator"
                 : comment.text}
           </p>
-          <div className="flex items-center gap-2">
-            {!comment.deletedAt && !comment.removedAt && (
+          {canReply && depth < 9 ? (
+            <CommentForm
+              postId={postId}
+              parentId={comment.id}
+              actions={
+                !comment.deletedAt &&
+                !comment.removedAt && (
+                  <ContentActions
+                    id={comment.id}
+                    kind="comment"
+                    owner={!!userId && userId === comment.userId}
+                    text={comment.text}
+                  />
+                )
+              }
+            />
+          ) : (
+            !comment.deletedAt &&
+            !comment.removedAt && (
               <ContentActions
                 id={comment.id}
                 kind="comment"
                 owner={!!userId && userId === comment.userId}
                 text={comment.text}
               />
-            )}
-            {canReply && depth < 9 && (
-              <details>
-                <summary className="inline-flex min-h-11 items-center text-sm font-medium text-primary">
-                  Reply
-                </summary>
-                <CommentForm postId={postId} parentId={comment.id} />
-              </details>
-            )}
-          </div>
-          <div className={depth < 3 ? "ml-1 sm:ml-3" : ""}>
-            {thread(comment.id, depth + 1)}
-          </div>
+            )
+          )}
         </div>
+        {thread(comment.id, depth + 1)}
       </details>
     ));
   }
