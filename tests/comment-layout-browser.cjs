@@ -21,6 +21,7 @@ async function main() {
    const errors=[];page.on("pageerror",e=>errors.push(e.message));
    await page.addInitScript(value=>localStorage.setItem("theme",value),theme);
    await page.goto("http://localhost:3000/comment-layout-check");
+   await page.waitForLoadState("networkidle");
    const root=page.locator("#comment-layout-0");
    const reply=root.getByRole("button",{name:"Reply",exact:true}).first();
    await reply.click();
