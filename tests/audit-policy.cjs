@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { createRequire } = require("node:module");
 const { assessReport } = require("../scripts/audit-dependencies.cjs");
 const { expires, advisory } = require("../scripts/braces-patch.json");
 const now = Date.parse("2026-10-03T00:00:00Z");
@@ -37,6 +38,24 @@ assert.throws(() => assessReport(unrelated, now), /Unmitigated/);
 const cycle = report();
 cycle.vulnerabilities.braces.via = ["micromatch"];
 assert.throws(() => assessReport(cycle, now), /Unmitigated/);
+for (const consumer of [
+  "tailwindcss",
+  "@tailwindcss/typography",
+  "postcss-nested",
+]) {
+  const consumerRequire = createRequire(
+    require.resolve(`${consumer}/package.json`),
+  );
+  assert.equal(
+    consumerRequire("postcss-selector-parser/package.json").version,
+    "7.1.6",
+  );
+  const selector = ".prose :is(h1, h2) > a:hover";
+  assert.equal(
+    consumerRequire("postcss-selector-parser")().processSync(selector),
+    selector,
+  );
+}
 console.log(
   "Audit policy blocks new advisories, cyclic findings, network errors and expired reviews",
 );

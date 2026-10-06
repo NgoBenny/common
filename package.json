@@ -24,6 +24,7 @@
     "db:baseline": "node scripts/baseline-db.cjs"
   },
   "overrides": {
+    "postcss-selector-parser": "7.1.6",
     "next": {
       "postcss": "8.5.28",
       "sharp": "$sharp"
