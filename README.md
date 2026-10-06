@@ -1,12 +1,14 @@
 # Common
 
-A full-stack community discussion app built with Next.js 15, TypeScript, and PostgreSQL. Users can sign in through Kinde, create communities, publish rich-text or image posts, comment, and toggle upvotes or downvotes. Prisma-backed server actions persist these interactions, while paginated feeds and Tailwind CSS components provide the browsing interface.
+A full-stack community discussion app built with Next.js 15, TypeScript, PostgreSQL, and Prisma. It combines rich-text and image posts, searchable feeds, votes, saves, and readable threaded conversations with inline replies.
 
-The project brings authentication, relational data modeling, image uploads through UploadThing, and server-rendered pages together in one application.
+Server actions enforce ownership and moderation permissions, database-backed participation restrictions, and reversible community removal. Editor JSON normalization, draft retention, and targeted regression checks address failures across the interface-to-storage workflow.
 
 Login explicitly opens Kinde's sign-in choices rather than silently reusing its SSO session. Signed-in users can select **Switch account** from the account menu. Existing sessions still persist during normal browsing.
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+
+Dependency tooling uses a temporary, verified nesting-depth mitigation, not an upstream vulnerability fix. See [dependency security](docs/dependency-security.md) for the audit policy and October 17, 2026 UTC review expiry.
 
 ## Getting Started
 
