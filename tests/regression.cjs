@@ -114,7 +114,16 @@ async function main() {
   assert.equal(notifications[0].title, "test");
   assert.equal(notifications[1].variant, "destructive");
   const { CommentForm } = load("app/components/CommentForm.tsx", {
-    react: { ...React, useState: () => ["Draft", () => commentClears++], useRef: () => ({current:null}) },
+    react: {
+      ...React,
+      useState: () => [
+        "Draft",
+        (value) => {
+          if (value === "") commentClears++;
+        },
+      ],
+      useRef: () => ({ current: null }),
+    },
     "@/components/ui/label": { Label: "label" },
     "@/components/ui/textarea": { Textarea: "textarea" },
     "@/components/ui/button": { Button: "button" },
@@ -138,7 +147,9 @@ async function main() {
       if (form) return form;
     }
   }
-  const sharedForm = ActionForm(findCommentForm(CommentForm({ postId: "post" })).props);
+  const sharedForm = ActionForm(
+    findCommentForm(CommentForm({ postId: "post" })).props,
+  );
   const commentAction = sharedForm.props.action;
   await commentAction(new FormData());
   assert.equal(commentClears, 1, "Successful comments clear the draft");

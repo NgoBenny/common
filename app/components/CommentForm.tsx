@@ -18,49 +18,47 @@ interface iAppProps {
 
 export function CommentForm({ postId, parentId, actions }: iAppProps) {
   const [comment, setComment] = useState("");
-  const [expanded, setExpanded] = useState(!parentId);
+  const [expanded, setExpanded] = useState(false);
   const replyToggle = useRef<HTMLButtonElement>(null);
   const inputId = `comment-input-${parentId || postId}`;
   return (
     <div className="min-w-0">
-      {parentId && (
-        <div className="flex items-center gap-1">
-          <Button
-            ref={replyToggle}
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-h-11 gap-2 text-muted-foreground"
-            aria-expanded={expanded}
-            aria-controls={`${inputId}-form`}
-            onClick={() => setExpanded(!expanded)}
-          >
-            <MessageSquare className="h-4 w-4" aria-hidden="true" /> Reply
-          </Button>
-          {actions}
-        </div>
-      )}
+      <div className={parentId ? "flex items-center gap-1" : "mt-5"}>
+        <Button
+          ref={replyToggle}
+          type="button"
+          variant={parentId ? "ghost" : "outline"}
+          size="sm"
+          className={
+            parentId
+              ? "min-h-11 gap-2 text-muted-foreground"
+              : "min-h-11 w-full justify-start gap-2 rounded-full text-muted-foreground"
+          }
+          aria-expanded={expanded}
+          aria-controls={`${inputId}-form`}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <MessageSquare className="h-4 w-4" aria-hidden="true" />{" "}
+          {parentId ? "Reply" : "Join the conversation"}
+        </Button>
+        {actions}
+      </div>
       {expanded && (
-        <div id={`${inputId}-form`} className={parentId ? "mt-2" : "mt-5"}>
+        <div id={`${inputId}-form`} className="mt-2">
           <ActionForm
             className="rounded-xl border bg-background p-3 focus-within:border-primary"
             action={createComment}
             onSuccess={() => {
               setComment("");
-              if (parentId) {
-                setExpanded(false);
-                replyToggle.current?.focus();
-              }
+              setExpanded(false);
+              replyToggle.current?.focus();
             }}
           >
             <input type="hidden" name="postId" value={postId}></input>
             {parentId && (
               <input type="hidden" name="parentId" value={parentId} />
             )}
-            <Label
-              className={parentId ? "sr-only" : "mb-2 block"}
-              htmlFor={inputId}
-            >
+            <Label className="sr-only" htmlFor={inputId}>
               {parentId ? "Your reply" : "Join the conversation"}
             </Label>
             <Textarea
@@ -71,26 +69,24 @@ export function CommentForm({ postId, parentId, actions }: iAppProps) {
                 parentId ? "Write a reply…" : "Share your perspective…"
               }
               rows={3}
-              autoFocus={!!parentId}
+              autoFocus
               className="min-h-24 w-full resize-y border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               name="comment"
               value={comment}
               onChange={(event) => setComment(event.target.value)}
             />
             <div className="mt-2 flex justify-end gap-2">
-              {parentId && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="min-h-11"
-                  onClick={() => {
-                    setExpanded(false);
-                    replyToggle.current?.focus();
-                  }}
-                >
-                  Cancel
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11"
+                onClick={() => {
+                  setExpanded(false);
+                  replyToggle.current?.focus();
+                }}
+              >
+                Cancel
+              </Button>
               <SubmitButton
                 text={parentId ? "Reply" : "Comment"}
                 disabled={!comment.trim()}
