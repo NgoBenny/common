@@ -122,7 +122,7 @@ export function PostCard({
             postId={id}
             voteCount={voteCount}
             currentVote={currentVote}
-            className="flex items-center rounded-xl bg-muted text-sm font-semibold tabular-nums"
+            className="flex items-center rounded-full bg-muted text-sm font-semibold tabular-nums"
           />
           <Link
             href={`/post/${id}#comments`}

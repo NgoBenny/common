@@ -49,7 +49,7 @@ function renderNode(node: JSONContent, key: number, depth = 0): ReactNode {
 export function RenderToJson({ data }: { data: unknown }) {
   if (!validRichText(data)) return null;
   return (
-    <div className="px-2 pt-2 prose dark:prose-invert break-words">
+    <div className="prose max-w-none pt-2 text-sm leading-relaxed dark:prose-invert break-words sm:text-base prose-headings:mb-3 prose-headings:mt-5 prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:my-3">
       {renderNode(data as JSONContent, 0)}
     </div>
   );

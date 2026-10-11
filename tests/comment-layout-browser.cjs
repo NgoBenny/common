@@ -22,6 +22,14 @@ async function main() {
    await page.addInitScript(value=>localStorage.setItem("theme",value),theme);
    await page.goto("http://localhost:3000/comment-layout-check");
    await page.waitForLoadState("networkidle");
+   const join=page.getByRole("button",{name:"Join the conversation",exact:true});
+   assert.equal(await page.getByRole("textbox",{name:"Join the conversation",exact:true}).count(),0);
+   await join.click();
+   const topField=page.getByRole("textbox",{name:"Join the conversation",exact:true});
+   await topField.fill("Retained top-level draft");
+   await page.getByRole("button",{name:"Cancel",exact:true}).click();
+   await join.click();assert.equal(await topField.inputValue(),"Retained top-level draft");
+   await page.getByRole("button",{name:"Cancel",exact:true}).click();
    const root=page.locator("#comment-layout-0");
    const reply=root.getByRole("button",{name:"Reply",exact:true}).first();
    await reply.click();
