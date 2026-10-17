@@ -1,20 +1,45 @@
 # Common
 
-A full-stack community discussion app built with Next.js 15, TypeScript, PostgreSQL, and Prisma. It combines rich-text and image posts, searchable feeds, votes, saves, and readable threaded conversations with inline replies.
+Common is a community discussion app built with Next.js 15, React, TypeScript, PostgreSQL, and Prisma. It supports searchable feeds, rich-text and image posts, threaded replies, votes, private saves, profiles, and in-app notifications.
 
-Server actions enforce ownership and moderation permissions, database-backed participation restrictions, and reversible community removal. Editor JSON normalization, draft retention, and targeted regression checks address failures across the interface-to-storage workflow.
+My work builds on the original scaffold. It includes the Common redesign, server-side permission checks, transactional voting, scoped moderation, and database recovery tooling. The repository records implementation and dated checks; a merged feature is not automatically verified in production.
 
-Login explicitly opens Kinde's sign-in choices rather than silently reusing its SSO session. Signed-in users can select **Switch account** from the account menu. Existing sessions still persist during normal browsing.
+## How it works
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+| Layer | Responsibility |
+| --- | --- |
+| Next.js App Router | Server-rendered feeds, post pages, profiles, and responsive navigation |
+| Kinde | Sign-in and authenticated user identity |
+| Server actions | Input validation, ownership checks, restrictions, and writes |
+| Prisma + PostgreSQL | Relational records, transactions, migrations, and private query scopes |
+| UploadThing | Authenticated image uploads |
+| Tiptap + React renderer | Rich-text editing and bounded rendering without arbitrary stored attributes |
 
-Dependency tooling uses a temporary, verified nesting-depth mitigation, not an upstream vulnerability fix. See [dependency security](docs/dependency-security.md) for the audit policy and October 17, 2026 UTC review expiry.
+The interface has light and dark themes, a desktop navigation rail, and mobile bottom navigation. A shared composer handles post creation and editing. Post pages place actions below the body; comment and reply composers keep cancelled drafts and restore keyboard focus.
 
-## Getting Started
+## Permissions and consistency
 
-See [the audit and revival guide](AUDIT.md) for the deployment diagnosis, changes, and remaining feature backlog. Use Node 24.x, run `npm ci`, and copy `.env.example` to `.env.local` with your own Supabase, Kinde, and UploadThing settings. Run `npm run db:check` to verify database access before starting the app. Never commit `.env.local`.
+- Server actions derive the acting user from Kinde and enforce ownership at the write boundary. Hiding an interface control is not the permission check.
+- Voting uses serializable transactions with bounded conflict retries. The selected button comes from the saved vote, and page invalidation updates the feed and detail page.
+- Community creators moderate their own communities. A site moderator can apply site-wide restrictions and remove or restore communities. The role is tied to an immutable account identity.
+- Participation restrictions are read from the database on protected writes, including expiry. Transaction locks coordinate bans and community removal with participation writes.
+- Community removal hides content while preserving it for restoration. Restricted users retain permitted activities, including reading and erasing their own content.
+- Saved posts and notifications are scoped to the current user. New feature and moderation tables use default-deny RLS, while privileged server access still requires application permission checks.
+- Search uses bound SQL parameters and literal wildcard escaping. Rich-text JSON is normalized for server-action transport and validated on the server.
 
-First, run the development server:
+See [community features](FEATURES.md) and [moderation policy](docs/moderation.md) for the exact permissions and release requirements.
+
+## Recovery and database changes
+
+The September 30 recovery restored the application tables from the paused database into a replacement hosted PostgreSQL project. Updating connection settings recovered the homepage. The audit did not establish expired credentials as the cause.
+
+Backup scripts create checksummed archives. Restore verification uses an isolated local database; archive readability alone is not a restore test. Schema changes are tested against restored backups, and builds do not run migrations.
+
+Follow [database recovery and migrations](DATABASE.md) before changing an existing database. Never run a reset or destructive schema synchronization against production. Authentication accounts and uploaded images are separate services and are not included in the PostgreSQL backup.
+
+## Local setup
+
+Use Node 24.x. Run `npm ci`, copy `.env.example` to the ignored `.env.local`, and supply your own PostgreSQL, Kinde, and UploadThing configuration. Use an isolated development database and follow the migration instructions in [DATABASE.md](DATABASE.md). Run `npm run db:check` before starting the app. Never commit credentials or database exports.
 
 ```bash
 npm run dev
@@ -26,27 +51,34 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Kinde login shows explicit sign-in choices; the account menu provides Switch account while normal browsing retains the session.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Checks and their limits
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+`npm test` runs regression, editor-transport, moderation, database-safety, and backup-retention checks. `npm run test:features` and `npm run test:runtime-role` exercise database behavior; follow their isolated-database prerequisites before running them. `npm run test:browser` covers public browsing and authentication redirects.
 
-## Learn More
+The [October 1 feature report](FEATURES.md) records browser and PostgreSQL checks, including forged writes, other-author edits, cross-community moderation, and private notification access. Those results describe that revision and environment. They do not establish that every later feature or production workflow has passed the same checks.
 
-To learn more about Next.js, take a look at the following resources:
+### Dependency review needs renewal
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The local `braces` nesting-depth mitigation is checksum verified and tested against excessive nesting. Its advisory-specific audit exception expired **October 17, 2026 at 00:00 UTC**. The audit policy rejects expired approval. A fresh review or an upstream fix is required; the mitigation does not remove npm's upstream advisory.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+See [dependency security](docs/dependency-security.md). Do not extend the exception automatically or treat a successful build as security approval.
 
-## Deploy on Vercel
+## Deployment
 
-The GitHub repository is `NgoBenny/common` and the Vercel project is `common`. The staged address [common-ngobenny.vercel.app](https://common-ngobenny.vercel.app) temporarily redirects to the existing production address until the Common release.
+The GitHub repository is `NgoBenny/common` and the Vercel project is `common`. The configured demo address is [common-ngobenny.vercel.app](https://common-ngobenny.vercel.app). Earlier release notes describe a redirect to the prior production address; verify the current origin and deployed revision before a cutover.
 
 For the production address cutover, add `https://common-ngobenny.vercel.app/api/auth/kinde_callback` to Kinde's allowed callbacks and `https://common-ngobenny.vercel.app` to its logout allowlist. Set production `KINDE_SITE_URL` and `KINDE_POST_LOGOUT_REDIRECT_URL` to the new origin, and `KINDE_POST_LOGIN_REDIRECT_URL` to its `/api/auth/creation` URL. Deploy the release, connect the Common domain to Production, and redirect the old domain to Common. Verify login, logout and account switching on the new origin before removing any old callback entries. Preview deployments need their own exact allowed origins and matching environment variables.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Feature and moderation releases require the additive migrations described in [FEATURES.md](FEATURES.md) and [docs/moderation.md](docs/moderation.md), with a fresh restore-tested backup first. The older audit and release records describe their own checkpoints, not current production status.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Current limits
+
+Notifications refresh on navigation or reload; push and email delivery are outside this release. Search uses PostgreSQL ILIKE, and a post page loads its reply tree. Indexed search and thread pagination would need measured usage to justify them. There are no adoption or scalability benchmarks.
+
+The app depends on hosted authentication, PostgreSQL, and uploads. A successful deployment does not establish that all three services are available.
+
+## Project history
+
+Common began as Reddit Clone 2.0 and was bootstrapped with [create-next-app](https://github.com/vercel/next.js/tree/canary/packages/create-next-app). The [audit and revival guide](AUDIT.md) records the original application, recovery, and subsequent repairs.
